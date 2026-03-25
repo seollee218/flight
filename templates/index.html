@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✈ 항공권 빈자리 알림</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 -->
+        <header class="header">
+            <h1>✈ 항공권 빈자리 알림</h1>
+            <p class="subtitle">원하는 조건을 설정하면 빈자리가 생길 때 바로 알려드립니다</p>
+        </header>
+
+        <!-- 검색 폼 -->
+        <section class="search-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="departure">출발지</label>
+                    <input type="text" id="departure" placeholder="ICN" maxlength="3" value="ICN">
+                    <span class="hint">IATA 코드 3자리</span>
+                </div>
+                <div class="form-group swap-btn-wrap">
+                    <button class="swap-btn" onclick="swapAirports()" title="출발지 ↔ 도착지">⇄</button>
+                </div>
+                <div class="form-group">
+                    <label for="arrival">도착지</label>
+                    <input type="text" id="arrival" placeholder="NRT" maxlength="3" value="NRT">
+                    <span class="hint">IATA 코드 3자리</span>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="trip">편도 / 왕복</label>
+                    <select id="trip" onchange="toggleReturnDate()">
+                        <option value="OW">편도</option>
+                        <option value="RT">왕복</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="date">출발 날짜</label>
+                    <input type="date" id="date">
+                </div>
+                <div class="form-group" id="returnDateGroup" style="display:none">
+                    <label for="returnDate">귀국 날짜</label>
+                    <input type="date" id="returnDate">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group wide">
+                    <label>좌석 등급 <span class="multi-hint">(복수 선택 가능)</span></label>
+                    <div class="checkbox-group">
+                        <label class="chip selected" data-value="Y">
+                            <input type="checkbox" value="Y" checked> 이코노미
+                        </label>
+                        <label class="chip" data-value="PE">
+                            <input type="checkbox" value="PE"> 프리미엄이코노미
+                        </label>
+                        <label class="chip" data-value="C">
+                            <input type="checkbox" value="C"> 비즈니스
+                        </label>
+                        <label class="chip" data-value="F">
+                            <input type="checkbox" value="F"> 퍼스트
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="timeStart">희망 출발 시간대</label>
+                    <div class="time-range">
+                        <input type="time" id="timeStart" value="06:00">
+                        <span>~</span>
+                        <input type="time" id="timeEnd" value="23:00">
+                    </div>
+                    <span class="hint">비워두면 전체 시간대</span>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn primary" onclick="searchFlights()">
+                    <span class="btn-icon">🔍</span> 항공편 조회
+                </button>
+            </div>
+        </section>
+
+        <!-- 로딩 -->
+        <div id="loading" class="loading" style="display:none">
+            <div class="spinner"></div>
+            <p>항공편을 조회하는 중입니다...</p>
+        </div>
+
+        <!-- 결과 -->
+        <section id="results" class="results" style="display:none">
+            <div class="results-header">
+                <h2 id="resultsTitle">조회 결과</h2>
+                <span id="resultsCount" class="badge"></span>
+            </div>
+
+            <!-- AI 요약 -->
+            <div id="summaryBox" class="summary-box" style="display:none">
+                <div class="summary-label">📋 AI 요약</div>
+                <p id="summaryText"></p>
+            </div>
+
+            <!-- 테이블 -->
+            <div class="table-wrap">
+                <table id="flightsTable">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>항공사</th>
+                            <th>편명</th>
+                            <th>출발</th>
+                            <th>도착</th>
+                            <th>좌석등급</th>
+                            <th>잔여석</th>
+                            <th>가격</th>
+                        </tr>
+                    </thead>
+                    <tbody id="flightsBody"></tbody>
+                </table>
+            </div>
+
+            <!-- 모니터링 버튼 -->
+            <div class="monitor-actions" id="monitorActions">
+                <p class="monitor-desc">빈자리가 새로 생기면 실시간으로 알려드릴까요?</p>
+                <button class="btn accent" onclick="startMonitoring()">
+                    <span class="btn-icon">🔔</span> 실시간 모니터링 시작
+                </button>
+            </div>
+        </section>
+
+        <!-- 모니터링 패널 -->
+        <section id="monitorPanel" class="monitor-panel" style="display:none">
+            <div class="monitor-header">
+                <h2>🔔 실시간 모니터링 중</h2>
+                <button class="btn danger small" onclick="stopMonitoring()">중지</button>
+            </div>
+            <div class="monitor-info">
+                <span id="monitorStatus" class="status-badge active">● 활성</span>
+                <span id="monitorCycle">조회 #0</span>
+                <span id="monitorFound">발견: 0건</span>
+            </div>
+            <div class="monitor-log-wrap">
+                <table id="monitorLog">
+                    <thead>
+                        <tr>
+                            <th>발견 시각</th>
+                            <th>항공사</th>
+                            <th>편명</th>
+                            <th>출발</th>
+                            <th>도착</th>
+                            <th>좌석등급</th>
+                            <th>잔여석</th>
+                            <th>가격</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monitorLogBody"></tbody>
+                </table>
+                <p id="monitorEmpty" class="empty-msg">아직 새로운 빈자리가 발견되지 않았습니다. 모니터링 중...</p>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>✈ 항공권 빈자리 알림 에이전트 | Demo</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

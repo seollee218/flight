@@ -1,0 +1,7 @@
+llm:
+  endpoint: ""
+  api_key: ""
+  model: ""
+monitor:
+  interval_seconds: 60
+  max_hours: 24
